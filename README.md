@@ -8,10 +8,10 @@
                         before:(void(^)(id target, SEL sel))before
                          after:(void(^)(id target, SEL sel))after;
 
-aClass:目标类
-condition:是否打印某个方法
-before:某个方法调用前
-before:某个方法调用后
+aClass:目标类<br>
+condition:是否打印某个方法<br>
+before:某个方法调用前<br>
+before:某个方法调用后<br>
 
 
 ###功能：
