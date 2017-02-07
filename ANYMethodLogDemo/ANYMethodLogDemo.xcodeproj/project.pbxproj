@@ -19,6 +19,7 @@
 		A3C931C81E2F651F00C25FEC /* ListController.xib in Resources */ = {isa = PBXBuildFile; fileRef = A3C931C61E2F651F00C25FEC /* ListController.xib */; };
 		A3C931CC1E2F652E00C25FEC /* DetailController.m in Sources */ = {isa = PBXBuildFile; fileRef = A3C931CA1E2F652E00C25FEC /* DetailController.m */; };
 		A3C931CD1E2F652E00C25FEC /* DetailController.xib in Resources */ = {isa = PBXBuildFile; fileRef = A3C931CB1E2F652E00C25FEC /* DetailController.xib */; };
+		A3FBEA411E35FD2E000F10FA /* ClassMethodTests.m in Sources */ = {isa = PBXBuildFile; fileRef = A3FBEA401E35FD2E000F10FA /* ClassMethodTests.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -53,6 +54,7 @@
 		A3C931C91E2F652E00C25FEC /* DetailController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DetailController.h; sourceTree = "<group>"; };
 		A3C931CA1E2F652E00C25FEC /* DetailController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = DetailController.m; sourceTree = "<group>"; };
 		A3C931CB1E2F652E00C25FEC /* DetailController.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; path = DetailController.xib; sourceTree = "<group>"; };
+		A3FBEA401E35FD2E000F10FA /* ClassMethodTests.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ClassMethodTests.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -126,6 +128,7 @@
 			isa = PBXGroup;
 			children = (
 				A3C931B01E2F621900C25FEC /* ANYMethodLogDemoTests.m */,
+				A3FBEA401E35FD2E000F10FA /* ClassMethodTests.m */,
 				A3C931B21E2F621900C25FEC /* Info.plist */,
 			);
 			path = ANYMethodLogDemoTests;
@@ -261,6 +264,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A3C931B11E2F621900C25FEC /* ANYMethodLogDemoTests.m in Sources */,
+				A3FBEA411E35FD2E000F10FA /* ClassMethodTests.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -388,6 +392,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				DEVELOPMENT_TEAM = M7686ZYZB3;
 				INFOPLIST_FILE = ANYMethodLogDemo/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 10.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = com.qiuhaodong.ANYMethodLogDemo;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -400,6 +405,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				DEVELOPMENT_TEAM = M7686ZYZB3;
 				INFOPLIST_FILE = ANYMethodLogDemo/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 10.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = com.qiuhaodong.ANYMethodLogDemo;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -451,6 +457,7 @@
 				A3C931B71E2F621900C25FEC /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 		A3C931B81E2F621900C25FEC /* Build configuration list for PBXNativeTarget "ANYMethodLogDemoTests" */ = {
 			isa = XCConfigurationList;
@@ -459,6 +466,7 @@
 				A3C931BA1E2F621900C25FEC /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};

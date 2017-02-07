@@ -508,28 +508,7 @@ BOOL qhd_isCanHook(Method method, const char *returnType) {
     return isCanHook;
 }
 
-
-#pragma mark - ANYMethodLog implementation
-
-@implementation ANYMethodLog
-
-+ (void)logMethodWithClass:(Class)aClass
-                 condition:(BOOL(^)(SEL sel))condition
-                    before:(void(^)(id target, SEL sel))before
-                     after:(void(^)(id target, SEL sel))after {
-    #ifndef DEBUG
-        return;
-    #endif
-    
-    if (aClass) {
-        AMLBlock *block = [[AMLBlock alloc] init];
-        block.targetClassName = NSStringFromClass(aClass);
-        block.condition = condition;
-        block.before = before;
-        block.after = after;
-        [SHARED_ANYMETHODLOG.blockCache setObject:block forKey:block.targetClassName];
-    }
-    
+void qhd_logMethod(Class aClass, BOOL(^condition)(SEL sel)) {
     unsigned int outCount;
     Method *methods = class_copyMethodList(aClass,&outCount);
     
@@ -562,6 +541,35 @@ BOOL qhd_isCanHook(Method method, const char *returnType) {
         free(returnType);
     }
     free(methods);
+}
+
+
+#pragma mark - ANYMethodLog implementation
+
+@implementation ANYMethodLog
+
++ (void)logMethodWithClass:(Class)aClass
+                 condition:(BOOL(^)(SEL sel))condition
+                    before:(void(^)(id target, SEL sel))before
+                     after:(void(^)(id target, SEL sel))after {
+    #ifndef DEBUG
+        return;
+    #endif
+    
+    if (aClass) {
+        AMLBlock *block = [[AMLBlock alloc] init];
+        block.targetClassName = NSStringFromClass(aClass);
+        block.condition = condition;
+        block.before = before;
+        block.after = after;
+        [SHARED_ANYMETHODLOG.blockCache setObject:block forKey:block.targetClassName];
+    }
+    
+    qhd_logMethod(aClass, condition);
+    
+    //获取元类，处理类方法。（注意获取元类是用object_getClass，而不是class_getSuperclass）
+    Class metaClass = object_getClass(aClass);
+    qhd_logMethod(metaClass, condition);
 }
 
 + (instancetype)sharedANYMethodLog {
