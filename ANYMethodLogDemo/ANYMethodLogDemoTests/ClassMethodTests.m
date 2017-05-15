@@ -60,9 +60,9 @@
 - (void)testManagerTest {
     [ANYMethodLog logMethodWithClass:[ManagerTest class] condition:^BOOL(SEL sel) {
         return YES;
-    } before:^(id target, SEL sel) {
+    } before:^(id target, SEL sel, NSArray *args) {
         NSLog(@"befor target:%@ sel:%@", target, NSStringFromSelector(sel));
-    } after:^(id target, SEL sel) {
+    } after:^(id target, SEL sel, NSArray *args, NSTimeInterval interval) {
         NSLog(@"after target:%@ sel:%@", target, NSStringFromSelector(sel));
     }];
     

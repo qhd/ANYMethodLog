@@ -23,43 +23,47 @@
     // Override point for customization after application launch.
     
     //用法一
-//    [ANYMethodLog logMethodWithClass:[UIViewController class] condition:^BOOL(SEL sel) {
-//        NSLog(@"method:%@", NSStringFromSelector(sel));
-//        return NO;
-//    } before:nil after:nil];
+    /*
+    [ANYMethodLog logMethodWithClass:[UIViewController class] condition:^BOOL(SEL sel) {
+        NSLog(@"method:%@", NSStringFromSelector(sel));
+        return NO;
+    } before:nil after:nil];
+     */
 
     
     //用法二
     [ANYMethodLog logMethodWithClass:[UIViewController class] condition:^BOOL(SEL sel) {
         
-        NSArray *whiteList = @[@"loadView", @"viewDidLoad", @"viewWillAppear:", @"viewDidAppear:", @"viewWillDisappear:", @"viewDidDisappear:", @"viewWillLayoutSubviews", @"viewDidLayoutSubviews"];
+        NSArray *whiteList = @[@"loadView", @"viewWillAppear:", @"viewDidAppear:", @"viewWillDisappear:", @"viewDidDisappear:", @"viewWillLayoutSubviews", @"viewDidLayoutSubviews"];
         return [whiteList containsObject:NSStringFromSelector(sel)];
         
-    } before:^(id target, SEL sel) {
+    } before:^(id target, SEL sel, NSArray *args) {
         
-        NSLog(@"before target:%@ sel:%@", target, NSStringFromSelector(sel));
+        NSLog(@"before target:%@ sel:%@ args:%@", target, NSStringFromSelector(sel), args);
         
-    } after:^(id target, SEL sel) {
+    } after:^(id target, SEL sel, NSArray *args, NSTimeInterval interval) {
         
-        NSLog(@"after target:%@ sel:%@", target, NSStringFromSelector(sel));
+        NSLog(@"after target:%@ sel:%@ args:%@ interval:%@", target, NSStringFromSelector(sel), args, [@(interval/1000.0) stringValue]);
         
     }];
     
     //用法三
-//    [ANYMethodLog logMethodWithClass:[ListController class] condition:^BOOL(SEL sel) {
-//        
-//        return [NSStringFromSelector(sel) isEqualToString:@"viewDidLoad"];
-//        
-//    } before:^(id target, SEL sel) {
-//        
-//        NSLog(@"before frame%@", NSStringFromCGRect([(ListController *)target view].frame));
-//    
-//    } after:^(id target, SEL sel) {
-//        
-//        NSLog(@"after frame%@", NSStringFromCGRect([(ListController *)target view].frame));
-//        
-//    }];
-    
+    /*
+    [ANYMethodLog logMethodWithClass:[ListController class] condition:^BOOL(SEL sel) {
+        
+        return [NSStringFromSelector(sel) isEqualToString:@"viewWillLayoutSubviews"];
+        
+    }before:^(id target, SEL sel, NSArray *args) {
+        
+        NSLog(@"before frame%@", NSStringFromCGRect([(ListController *)target view].frame));
+        
+    } after:^(id target, SEL sel, NSArray *args, NSTimeInterval interval) {
+        
+        NSLog(@"after frame%@", NSStringFromCGRect([(ListController *)target view].frame));
+        
+    }];
+     */
+
     return YES;
 }
 
