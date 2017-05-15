@@ -293,9 +293,9 @@
 - (void)testMyObject {
     [ANYMethodLog logMethodWithClass:[MyObject class] condition:^BOOL(SEL sel) {
         return YES;
-    } before:^(id target, SEL sel) {
-        NSLog(@"target:%@ sel:%@", target, NSStringFromSelector(sel));
-    } after:^(id target, SEL sel) {
+    } before:^(id target, SEL sel, NSArray *args) {
+        NSLog(@"target:%@ sel:%@ args:%@", target, NSStringFromSelector(sel), args);
+    } after:^(id target, SEL sel, NSArray *args, NSTimeInterval interval) {
         
     }];
     

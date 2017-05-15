@@ -51,7 +51,8 @@
  */
 
 #import "ANYMethodLog.h"
-#include <objc/runtime.h>
+#import <objc/runtime.h>
+#import <objc/message.h>
 #import <UIKit/UIKit.h>
 
 #pragma mark - AMLBlock
@@ -60,8 +61,8 @@
 
 @property (strong, nonatomic) NSString *targetClassName;
 @property (copy, nonatomic) BOOL(^condition)(SEL sel);
-@property (copy, nonatomic) void(^before)(id target, SEL sel);
-@property (copy, nonatomic) void(^after)(id target, SEL sel);
+@property (copy, nonatomic) void(^before)(id target, SEL sel, NSArray *args);
+@property (copy, nonatomic) void(^after)(id target, SEL sel, NSArray *args, NSTimeInterval interval);
 
 @end
 
@@ -75,15 +76,15 @@
     }
 }
 
-- (void)rundBefore:(id)target sel:(SEL)sel {
+- (void)rundBefore:(id)target sel:(SEL)sel args:(NSArray *)args {
     if (self.before) {
-        self.before(target, sel);
+        self.before(target, sel, args);
     }
 }
 
-- (void)rundAfter:(id)target sel:(SEL)sel {
+- (void)rundAfter:(id)target sel:(SEL)sel args:(NSArray *)args interval:(NSTimeInterval)interval {
     if (self.after) {
-        self.after(target, sel);
+        self.after(target, sel, args, interval);
     }
 }
 
@@ -98,6 +99,8 @@
 
 + (instancetype)sharedANYMethodLog;
 
+- (void)setAMLBlock:(AMLBlock *)block forKey:(NSString *)aKey;
+
 - (AMLBlock *)blockWithTarget:(id)target;
 
 @end
@@ -107,9 +110,9 @@
 
 #define SHARED_ANYMETHODLOG [ANYMethodLog sharedANYMethodLog]
 
-//#define OPEN_TARGET
+//#define OPEN_TARGET_LOG
 
-#ifdef OPEN_TARGET
+#ifdef OPEN_TARGET_LOG
 #define TARGET_LOG(format, ...) NSLog(format, ## __VA_ARGS__)
 #else
 #define TARGET_LOG(format, ...)
@@ -129,7 +132,7 @@ BOOL qhd_isInBlackList(NSString *methodName) {
     static NSArray *defaultBlackList = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        defaultBlackList = @[/*UIViewController的:*/@".cxx_destruct", @"dealloc", @"_isDeallocating", @"release", @"autorelease", @"retain", @"Retain", @"_tryRetain", @"copy", /*UIView的:*/ @"nsis_descriptionOfVariable:", /*NSObject的:*/@"respondsToSelector:", @"class", @"methodSignatureForSelector:", @"allowsWeakReference", @"retainWeakReference", @"init"];
+        defaultBlackList = @[/*UIViewController的:*/@".cxx_destruct", @"dealloc", @"_isDeallocating", @"release", @"autorelease", @"retain", @"Retain", @"_tryRetain", @"copy", /*UIView的:*/ @"nsis_descriptionOfVariable:", /*NSObject的:*/@"respondsToSelector:", @"class", @"methodSignatureForSelector:", @"allowsWeakReference", @"retainWeakReference", @"init", @"forwardInvocation:"];
     });
     return ([defaultBlackList containsObject:methodName]);
 }
@@ -194,17 +197,6 @@ BOOL qhd_isCanHandle(NSString *typeEncode) {
     return [qhd_canHandleTypeDic().allKeys containsObject:typeEncode];
 }
 
-//交换方法实现
-void qhd_exchangeInstanceMethod(Class class, SEL originalSelector, SEL newSelector) {
-    Method originalMethod = class_getInstanceMethod(class, originalSelector);
-    Method newMethod = class_getInstanceMethod(class, newSelector);
-    if(class_addMethod(class, originalSelector, method_getImplementation(newMethod), method_getTypeEncoding(newMethod))) {
-        class_replaceMethod(class, newSelector, method_getImplementation(originalMethod), method_getTypeEncoding(originalMethod));
-    } else {
-        method_exchangeImplementations(originalMethod, newMethod);
-    }
-}
-
 //创建一个新的selector
 SEL qhd_createNewSelector(SEL originalSelector) {
     NSString *oldSelectorName = NSStringFromSelector(originalSelector);
@@ -239,253 +231,16 @@ BOOL isUIOffset         (const char *type) {return [qhd_structName(type) isEqual
 BOOL isUIEdgeInsets     (const char *type) {return [qhd_structName(type) isEqualToString:@"UIEdgeInsets"];}
 BOOL isCGAffineTransform(const char *type) {return [qhd_structName(type) isEqualToString:@"CGAffineTransform"];}
 
-//设置struct类型的参数
-void qhd_setStructArguments(NSInvocation *invocation, const char *argumentType, va_list vas, NSInteger index, NSMutableString **methodDesc) {
-    if (isCGRect(argumentType)) {
-        CGRect rect = va_arg(vas, CGRect);
-        [invocation setArgument:&rect atIndex:index];
-        [*methodDesc appendFormat:@"%@ ", NSStringFromCGRect(rect)];
-    }
-    
-    else if (isCGPoint(argumentType)
-             || isCGSize(argumentType)
-             || isCGVector(argumentType)
-             || isUIOffset(argumentType)) {
-        CGPoint point = va_arg(vas, CGPoint);
-        [invocation setArgument:&point atIndex:index];
-        [*methodDesc appendFormat:@"%@ ", NSStringFromCGPoint(point)];
-    }
-    
-    else if (isUIEdgeInsets(argumentType)) {
-        UIEdgeInsets edgeInsets = va_arg(vas, UIEdgeInsets);
-        [invocation setArgument:&edgeInsets atIndex:index];
-        [*methodDesc appendFormat:@"%@ ", NSStringFromUIEdgeInsets(edgeInsets)];
-    }
-    
-    else if (isCGAffineTransform(argumentType)) {
-        CGAffineTransform affineTransform = va_arg(vas, CGAffineTransform);
-        [invocation setArgument:&affineTransform atIndex:index];
-        [*methodDesc appendFormat:@"%@ ", NSStringFromCGAffineTransform(affineTransform)];
-    }
-    
-    else {
-        //TODO:添加其他类型
-    }
-}
-
-#define SET_ARGUMENT(_type,_sizeType,_fmt)        \
-    else if (0 == strcmp(type, @encode(_type))) { \
-        _type arg = va_arg(vas, _sizeType);       \
-        [invocation setArgument:&arg atIndex:i];  \
-        [methodDesc appendFormat:_fmt, arg];      \
-    }
-
-//设置invocation参数
-NSString *qhd_setArguments(NSInvocation *invocation, NSMethodSignature *signature, va_list vas, SEL sel) {
-    NSString *origionSlectorName = NSStringFromSelector(sel);
-    NSArray *partNameList = [origionSlectorName componentsSeparatedByString:@":"];
-    NSMutableString *methodDesc = [NSMutableString string];
-    
-    NSUInteger argsCount = signature.numberOfArguments;
-    for (NSUInteger i = 2 ; i < argsCount; i ++) {
-        const char *type = [signature getArgumentTypeAtIndex:i];
-        
-        NSUInteger nIndex = i - 2;
-        NSString *partName = partNameList[nIndex];
-        NSDictionary *dictionary = qhd_canHandleTypeDic();
-        NSString *key = [NSString stringWithUTF8String:type];
-        NSString *value = [dictionary objectForKey:key];
-        [methodDesc appendFormat:@"%@:%@", partName, value];
-        
-        if (qhd_isStructType(type)) {
-            qhd_setStructArguments(invocation, type, vas, i, &methodDesc);
-        }
-        //注意在32位与在64位有个别类型长度不同，所以会有警告
-        #pragma clang diagnostic push
-        #pragma clang diagnostic ignored "-Wvarargs"
-        SET_ARGUMENT(char, char, @"%c ") //注意
-        SET_ARGUMENT(int, int, @"%d ")
-        SET_ARGUMENT(short, short, @"%d ") //注意
-        SET_ARGUMENT(long, long, @"%ldL ")
-        SET_ARGUMENT(long long, long long, @"%lldLL ")
-        SET_ARGUMENT(unsigned char, unsigned char, @"%c ")//注意
-        SET_ARGUMENT(unsigned int, unsigned int, @"%d ")
-        SET_ARGUMENT(unsigned short, unsigned short, @"%d ")//注意
-        SET_ARGUMENT(unsigned long, unsigned long, @"%luL ")
-        SET_ARGUMENT(unsigned long long, unsigned long long, @"%lluLL ")
-        SET_ARGUMENT(float, float, @"%f ")//注意
-        SET_ARGUMENT(double, double, @"%f ")
-        SET_ARGUMENT(BOOL, BOOL, @"%d ")//注意
-        #pragma clang diagnostic pop
-        SET_ARGUMENT(char *, char *, @"%s ")
-        SET_ARGUMENT(id, id, @"%@ ")
-        SET_ARGUMENT(Class, Class, @"%@ ")
-        else if (0 == strcmp(type, @encode(SEL))) {
-            SEL arg = va_arg(vas, SEL);
-            [invocation setArgument:&arg atIndex:i];
-            [methodDesc appendFormat:@"%@ ", NSStringFromSelector(arg)];
-        }
-        SET_ARGUMENT(void *, void *, @"%@ ")
-    }
-    if (methodDesc.length <= 0) {
-        [methodDesc appendString:origionSlectorName];
-    }
-    return methodDesc;
-}
-
-//调用原方法
-NSInvocation *qhd_callOrigionMethod(id target, SEL sel, va_list vas, void **returnValue, BOOL hasReturn, NSString **desc) {
-    SEL newSelecor = qhd_createNewSelector(sel);
-    NSMethodSignature *signature = [target methodSignatureForSelector:newSelecor];
-    NSInvocation *invocation = [NSInvocation invocationWithMethodSignature:signature];
-    invocation.target = target;
-    invocation.selector = newSelecor;
-    
-    NSString *methodDesc = qhd_setArguments(invocation, signature, vas, sel);
-    *desc = methodDesc;
-    
-    AMLBlock *block = [SHARED_ANYMETHODLOG blockWithTarget:target];
-    [block rundBefore:target sel:sel];
-    
-    [invocation invoke];
-    
-    [block rundAfter:target sel:sel];
-    
-    if (hasReturn) {
-        NSUInteger length = [signature methodReturnLength];
-        void *buffer = (void *)malloc(length);
-        memset(buffer, 0, length);
-        [invocation getReturnValue:&buffer];
-        (*returnValue) = buffer;
-    }
-    return invocation;
-}
-
-#define BEGIN_CALL       \
-    TARGET_LOG(@"begin id:%@ m:%@", target, NSStringFromSelector(_cmd));\
-    va_list vas;         \
-    va_start(vas, _cmd); \
-    NSString *desc;
-
-#define END_CALL \
-    va_end(vas); \
-    //TARGET_LOG(@"end id:%@ m:%@", target, desc);
-
-#define CALL_NO_RETURN  \
-qhd_callOrigionMethod(target, _cmd, vas, NULL, NO, &desc)
-
-//无返回值的函数
-void qhd_function(id target, SEL _cmd, ...) {
-    BEGIN_CALL
-    CALL_NO_RETURN;
-    END_CALL
-}
-
-//返回通用类型(不包含float, double, BOOL, longlong, unsignedlonglong, ustruct)的函数
-void *qhd_function_r(id target, SEL _cmd, ...) {
-    BEGIN_CALL
-    void *returnValue = NULL;
-    qhd_callOrigionMethod(target, _cmd, vas, &returnValue, YES, &desc);
-    END_CALL
-    return returnValue;
-}
-
-//因为在32位返回类型是long long的时候获取返回值有问题，所以要具体定义
-long long qhd_function_longlong(id target, SEL _cmd, ...) {
-    BEGIN_CALL
-    long long returnValue;
-    [CALL_NO_RETURN getReturnValue:&returnValue];
-    END_CALL
-    return returnValue;
-}
-
-//因为在32位返回类型是unsigned long long的时候获取返回值有问题，所以要具体定义
-unsigned long long qhd_function_unsignedlonglong(id target, SEL _cmd, ...) {
-    BEGIN_CALL
-    unsigned long long returnValue;
-    [CALL_NO_RETURN getReturnValue:&returnValue];
-    END_CALL
-    return returnValue;
-}
-
-//函数名
-#define FUN_NAME(_type) qhd_function_##_type
-
-//函数声明
-#define FUN_DECLARATION(_type) _type FUN_NAME(_type)
-
-//函数定义
-#define FUN_DEFINITION(_type)                          \
-    FUN_DECLARATION(_type)(id target, SEL _cmd, ...) { \
-        BEGIN_CALL                                     \
-        _type returnValue;                             \
-        [CALL_NO_RETURN getReturnValue:&returnValue];  \
-        END_CALL                                       \
-        return returnValue;                            \
-    }
-
-//返回BOOL的函数
-FUN_DEFINITION(BOOL)
-
-//返回float的函数
-FUN_DEFINITION(float)
-
-//返回double的函数
-FUN_DEFINITION(double)
-
-//返回CGRect的函数
-FUN_DEFINITION(CGRect)
-
-//返回CGPoint的函数 (CGSize, CGVector也是用这个)
-FUN_DEFINITION(CGPoint)
-
-//返回UIEdgeInsets的函数
-FUN_DEFINITION(UIEdgeInsets)
-
-//返回CGAffineTransform的函数
-FUN_DEFINITION(CGAffineTransform)
-
-//根据返回类型返回IMP
-IMP qhd_imp(const char *returnType) {
-    IMP imp = NULL;
-    if (0 == strcmp(returnType, @encode(void))) {
-        imp  = (IMP)qhd_function;
-    } else if (qhd_isStructType(returnType)) {
-        if (isCGRect(returnType)) {
-            imp = (IMP)FUN_NAME(CGRect);
-        } else if (isCGPoint(returnType) || isCGSize(returnType) || isCGVector(returnType) || isUIOffset(returnType)) {
-            imp = (IMP)FUN_NAME(CGPoint);
-        } else if (isUIEdgeInsets(returnType)) {
-            imp = (IMP)FUN_NAME(UIEdgeInsets);
-        } else if (isCGAffineTransform(returnType)) {
-            imp = (IMP)FUN_NAME(CGAffineTransform);
-        } else {
-            //TODO:添加其他类型
-        }
-    } else {
-        if (0 == strcmp(returnType, @encode(float))) {
-            imp = (IMP)FUN_NAME(float);
-        } else if (0 == strcmp(returnType, @encode(double))) {
-            imp = (IMP)FUN_NAME(double);
-        } else if (0 == strcmp(returnType, @encode(long long))) {
-            imp = (IMP)qhd_function_longlong;
-        } else if (0 == strcmp(returnType, @encode(unsigned long long))) {
-            imp = (IMP)qhd_function_unsignedlonglong;
-        } else if (0 == strcmp(returnType, @encode(BOOL))) {
-            imp = (IMP)FUN_NAME(BOOL);
-        } else if (qhd_isCanHandle([NSString stringWithUTF8String:returnType])){
-            imp  = (IMP)qhd_function_r;
-        }
-    }
-    return imp;
-}
-
 //检查是否能处理
 BOOL qhd_isCanHook(Method method, const char *returnType) {
     
     //若在黑名单中则不处理
     NSString *selectorName = NSStringFromSelector(method_getName(method));
     if (qhd_isInBlackList(selectorName)) {
+        return NO;
+    }
+    
+    if ([selectorName rangeOfString:@"qhd_"].location != NSNotFound) {
         return NO;
     }
     
@@ -508,6 +263,158 @@ BOOL qhd_isCanHook(Method method, const char *returnType) {
     return isCanHook;
 }
 
+//获取方法参数
+NSArray *qhd_method_arguments(NSInvocation *invocation) {
+    NSMethodSignature *methodSignature = [invocation methodSignature];
+    NSMutableArray *argList = (methodSignature.numberOfArguments > 2 ? [NSMutableArray array] : nil);
+    for (NSUInteger i = 2; i < methodSignature.numberOfArguments; i++) {
+        const char *argumentType = [methodSignature getArgumentTypeAtIndex:i];
+        id arg = nil;
+        
+        if (qhd_isStructType(argumentType)) {
+            #define GET_STRUCT_ARGUMENT(_type)\
+                if (is##_type(argumentType)) {\
+                    _type arg_temp;\
+                    [invocation getArgument:&arg_temp atIndex:i];\
+                    arg = NSStringFrom##_type(arg_temp);\
+                }
+            GET_STRUCT_ARGUMENT(CGRect)
+            else GET_STRUCT_ARGUMENT(CGPoint)
+            else GET_STRUCT_ARGUMENT(CGSize)
+            else GET_STRUCT_ARGUMENT(CGVector)
+            else GET_STRUCT_ARGUMENT(UIOffset)
+            else GET_STRUCT_ARGUMENT(UIEdgeInsets)
+            else GET_STRUCT_ARGUMENT(CGAffineTransform)
+            
+            if (arg == nil) {
+                arg = @"{unknown}";
+            }
+        }
+        #define GET_ARGUMENT(_type)\
+            if (0 == strcmp(argumentType, @encode(_type))) {\
+                _type arg_temp;\
+                [invocation getArgument:&arg_temp atIndex:i];\
+                arg = @(arg_temp);\
+            }
+        else GET_ARGUMENT(char)
+        else GET_ARGUMENT(int)
+        else GET_ARGUMENT(short)
+        else GET_ARGUMENT(long)
+        else GET_ARGUMENT(long long)
+        else GET_ARGUMENT(unsigned char)
+        else GET_ARGUMENT(unsigned int)
+        else GET_ARGUMENT(unsigned short)
+        else GET_ARGUMENT(unsigned long)
+        else GET_ARGUMENT(unsigned long long)
+        else GET_ARGUMENT(float)
+        else GET_ARGUMENT(double)
+        else GET_ARGUMENT(BOOL)
+        else if (0 == strcmp(argumentType, @encode(id))) {
+            __unsafe_unretained id arg_temp;
+            [invocation getArgument:&arg_temp atIndex:i];
+            arg = arg_temp;
+        }
+        else if (0 == strcmp(argumentType, @encode(SEL))) {
+            SEL arg_temp;
+            [invocation getArgument:&arg_temp atIndex:i];
+            arg = NSStringFromSelector(arg_temp);
+        }
+        else if (0 == strcmp(argumentType, @encode(char *))) {
+            char *arg_temp;
+            [invocation getArgument:&arg_temp atIndex:i];
+            arg = [NSString stringWithUTF8String:arg_temp];
+        }
+        else if (0 == strcmp(argumentType, @encode(void *))) {
+            void *arg_temp;
+            [invocation getArgument:&arg_temp atIndex:i];
+            arg = (__bridge id _Nonnull)arg_temp;
+        }
+        else if (0 == strcmp(argumentType, @encode(Class))) {
+            Class arg_temp;
+            [invocation getArgument:&arg_temp atIndex:i];
+            arg = arg_temp;
+        }
+        
+        if (!arg) {
+            arg = @"unknown";
+        }
+        [argList addObject:arg];
+    }
+    return argList;
+}
+
+//forwardInvocation:方法的新IMP
+void qhd_forwardInvocation(id target, SEL selector, NSInvocation *invocation) {
+    NSArray *argList = qhd_method_arguments(invocation);
+    
+    SEL originSelector = invocation.selector;
+    
+    NSString *originSelectorString = NSStringFromSelector(originSelector);
+    
+    //友盟的UMAOCTools会产生问题
+    if ([originSelectorString rangeOfString:@"hook_"].location != NSNotFound) {
+        return;
+    }
+    
+    [invocation setSelector:qhd_createNewSelector(originSelector)];
+    [invocation setTarget:target];
+    
+    AMLBlock *block = [SHARED_ANYMETHODLOG blockWithTarget:target];
+    [block rundBefore:target sel:originSelector args:argList];
+    
+    NSDate *start = [NSDate date];
+    
+    [invocation invoke];
+    
+    NSDate *end = [NSDate date];
+    NSTimeInterval interval = [end timeIntervalSinceDate:start];
+    
+    [block rundAfter:target sel:originSelector args:argList interval:interval];
+}
+
+//替换方法
+BOOL qhd_replaceMethod(Class cls, SEL originSelector, char *returnType) {
+    Method originMethod = class_getInstanceMethod(cls, originSelector);
+    if (originMethod == nil) {
+        return NO;
+    }
+    const char *originTypes = method_getTypeEncoding(originMethod);
+    IMP msgForwardIMP = _objc_msgForward;
+#if !defined(__arm64__)
+    if (qhd_isStructType(returnType)) {
+        //Reference JSPatch:
+        //In some cases that returns struct, we should use the '_stret' API:
+        //http://sealiesoftware.com/blog/archive/2008/10/30/objc_explain_objc_msgSend_stret.html
+        //NSMethodSignature knows the detail but has no API to return, we can only get the info from debugDescription.
+        NSMethodSignature *methodSignature = [NSMethodSignature signatureWithObjCTypes:originTypes];
+        if ([methodSignature.debugDescription rangeOfString:@"is special struct return? YES"].location != NSNotFound) {
+            msgForwardIMP = (IMP)_objc_msgForward_stret;
+        }
+    }
+#endif
+    
+    IMP originIMP = method_getImplementation(originMethod);
+    
+    if (originIMP == nil || originIMP == msgForwardIMP) {
+        return NO;
+    }
+    
+    //把原方法的IMP换成_objc_msgForward，使之触发forwardInvocation方法
+    class_replaceMethod(cls, originSelector, msgForwardIMP, originTypes);
+    
+    //把方法forwardInvocation的IMP换成qhd_forwardInvocation
+    class_replaceMethod(cls, @selector(forwardInvocation:), (IMP)qhd_forwardInvocation, "v@:@");
+    
+    //创建一个新方法，IMP就是原方法的原来的IMP，那么只要在qhd_forwardInvocation调用新方法即可
+    SEL newSelecotr = qhd_createNewSelector(originSelector);
+    BOOL isAdd = class_addMethod(cls, newSelecotr, originIMP, originTypes);
+    if (!isAdd) {
+        DEV_LOG(@"class_addMethod fail");
+    }
+    
+    return YES;
+}
+
 void qhd_logMethod(Class aClass, BOOL(^condition)(SEL sel)) {
     unsigned int outCount;
     Method *methods = class_copyMethodList(aClass,&outCount);
@@ -524,16 +431,10 @@ void qhd_logMethod(Class aClass, BOOL(^condition)(SEL sel)) {
         }
         
         if (isCan) {
-            IMP imp = qhd_imp(returnType);
-            if (imp) {
-                SEL newSelector = qhd_createNewSelector(selector);
-                BOOL isAdd = class_addMethod(aClass,newSelector,imp,method_getTypeEncoding(tempMethod));
-                if (isAdd) {
-                    qhd_exchangeInstanceMethod(aClass, selector, newSelector);
-                    DEV_LOG(@"success hook method:%@ types:%s", NSStringFromSelector(selector), method_getDescription(tempMethod)->types);
-                } else {
-                    DEV_LOG(@"fail method:%@ types:%s", NSStringFromSelector(selector), method_getDescription(tempMethod)->types);
-                }
+            if (qhd_replaceMethod(aClass, selector, returnType)) {
+                DEV_LOG(@"success hook method:%@ types:%s", NSStringFromSelector(selector), method_getDescription(tempMethod)->types);
+            } else {
+                DEV_LOG(@"fail method:%@ types:%s", NSStringFromSelector(selector), method_getDescription(tempMethod)->types);
             }
         } else {
             DEV_LOG(@"can not hook method:%@ types:%s", NSStringFromSelector(selector), method_getDescription(tempMethod)->types);
@@ -550,8 +451,8 @@ void qhd_logMethod(Class aClass, BOOL(^condition)(SEL sel)) {
 
 + (void)logMethodWithClass:(Class)aClass
                  condition:(BOOL(^)(SEL sel))condition
-                    before:(void(^)(id target, SEL sel))before
-                     after:(void(^)(id target, SEL sel))after {
+                    before:(void(^)(id target, SEL sel, NSArray *args))before
+                     after:(void(^)(id target, SEL sel, NSArray *args, NSTimeInterval interval))after {
     #ifndef DEBUG
         return;
     #endif
@@ -562,7 +463,7 @@ void qhd_logMethod(Class aClass, BOOL(^condition)(SEL sel)) {
         block.condition = condition;
         block.before = before;
         block.after = after;
-        [SHARED_ANYMETHODLOG.blockCache setObject:block forKey:block.targetClassName];
+        [SHARED_ANYMETHODLOG setAMLBlock:block forKey:block.targetClassName];
     }
     
     qhd_logMethod(aClass, condition);
@@ -580,6 +481,12 @@ void qhd_logMethod(Class aClass, BOOL(^condition)(SEL sel)) {
         _sharedANYMethodLog.blockCache = [NSMutableDictionary dictionary];
     });
     return _sharedANYMethodLog;
+}
+
+- (void)setAMLBlock:(AMLBlock *)block forKey:(NSString *)aKey {
+    @synchronized (self) {
+        [self.blockCache setObject:block forKey:aKey];
+    }
 }
 
 - (AMLBlock *)blockWithTarget:(id)target {
