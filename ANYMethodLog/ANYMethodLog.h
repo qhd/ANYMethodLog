@@ -15,10 +15,10 @@
 /**
  打印对象的方法调用
 
- @param aClass 目标类
- @param condition 根据此 block 来判断是否追踪方法
- @param before 方法调用前会调用该 block
- @param after 方法调用后会调用该 block
+ @param aClass 要打印的类
+ @param condition 根据此 block 来决定是否追踪方法（sel 是方法名）
+ @param before 方法调用前会调用该 block（target 是检测的对象，sel 是方法名，args 是参数列表）
+ @param after 方法调用后会调用该 block（interval 是执行方法的耗时）
  */
 + (void)logMethodWithClass:(Class)aClass
                  condition:(BOOL(^)(SEL sel))condition
