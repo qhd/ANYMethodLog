@@ -20,50 +20,77 @@
 
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
-    // Override point for customization after application launch.
     
-    //用法一
-    /*
-    [ANYMethodLog logMethodWithClass:[UIViewController class] condition:^BOOL(SEL sel) {
-        NSLog(@"method:%@", NSStringFromSelector(sel));
-        return NO;
-    } before:nil after:nil];
-     */
-
+    // Usage 1: 打印一个类定义的所有方法，包括公开方法和私有方法
+//    [ANYMethodLog logMethodWithClass:[UIViewController class] condition:^BOOL(SEL sel) {
+//        NSLog(@"method:%@", NSStringFromSelector(sel));
+//        return NO;
+//    } before:nil after:nil];
     
-    //用法二
+    
+    // Usage 2: 打印在运行过程中调用了哪些方法
     [ANYMethodLog logMethodWithClass:[UIViewController class] condition:^BOOL(SEL sel) {
-        
-        NSArray *whiteList = @[@"loadView", @"viewWillAppear:", @"viewDidAppear:", @"viewWillDisappear:", @"viewDidDisappear:", @"viewWillLayoutSubviews", @"viewDidLayoutSubviews"];
-        return [whiteList containsObject:NSStringFromSelector(sel)];
-        
+        return YES;
     } before:^(id target, SEL sel, NSArray *args) {
-        
-        NSLog(@"before target:%@ sel:%@ args:%@", target, NSStringFromSelector(sel), args);
-        
-    } after:^(id target, SEL sel, NSArray *args, NSTimeInterval interval) {
-        
-        NSLog(@"after target:%@ sel:%@ args:%@ interval:%@", target, NSStringFromSelector(sel), args, [@(interval/1000.0) stringValue]);
-        
-    }];
+        NSLog(@"target:%@ sel:%@", target, NSStringFromSelector(sel));
+    } after:nil];
     
-    //用法三
-    /*
-    [ANYMethodLog logMethodWithClass:[ListController class] condition:^BOOL(SEL sel) {
-        
-        return [NSStringFromSelector(sel) isEqualToString:@"viewWillLayoutSubviews"];
-        
-    }before:^(id target, SEL sel, NSArray *args) {
-        
-        NSLog(@"before frame%@", NSStringFromCGRect([(ListController *)target view].frame));
-        
-    } after:^(id target, SEL sel, NSArray *args, NSTimeInterval interval) {
-        
-        NSLog(@"after frame%@", NSStringFromCGRect([(ListController *)target view].frame));
-        
-    }];
-     */
+    
+    // Usage 3: 打印特定几个方法的调用顺序
+//    [ANYMethodLog logMethodWithClass:[UIViewController class] condition:^BOOL(SEL sel) {
+//        
+//        NSArray *whiteList = @[@"loadView", @"viewWillAppear:", @"viewDidAppear:", @"viewWillDisappear:", @"viewDidDisappear:", @"viewWillLayoutSubviews", @"viewDidLayoutSubviews"];
+//        return [whiteList containsObject:NSStringFromSelector(sel)];
+//        
+//    } before:^(id target, SEL sel, NSArray *args) {
+//        
+//        NSLog(@"target:%@ sel:%@", target, NSStringFromSelector(sel));
+//        
+//    } after:nil];
 
+    
+    // Usage 4: 打印调用方法时的参数值
+//    [ANYMethodLog logMethodWithClass:NSClassFromString(@"UIViewController") condition:^BOOL(SEL sel) {
+//        
+//        return [NSStringFromSelector(sel) isEqualToString:@"viewWillAppear:"];
+//    
+//    } before:^(id target, SEL sel, NSArray *args) {
+//    
+//        NSLog(@"before target:%@ sel:%@ args:%@", target, NSStringFromSelector(sel), args);
+//    
+//    } after:nil];
+    
+    
+    // Usage 5: 打印某个方法调用前后的变化
+//    [ANYMethodLog logMethodWithClass:NSClassFromString(@"ListController") condition:^BOOL(SEL sel) {
+//
+//        return [NSStringFromSelector(sel) isEqualToString:@"changeBackground"];
+//
+//    } before:^(id target, SEL sel, NSArray *args) {
+//
+//        NSLog(@"before background color:%@", [(ListController *)target view].backgroundColor);
+//
+//    } after:^(id target, SEL sel, NSArray *args, NSTimeInterval interval) {
+//        
+//        NSLog(@"after background color:%@", [(ListController *)target view].backgroundColor);
+//        
+//    }];
+    
+    
+    // Usage 6: 打印某个方法调用的耗时
+//    [ANYMethodLog logMethodWithClass:NSClassFromString(@"ListController") condition:^BOOL(SEL sel) {
+//        
+//        return [NSStringFromSelector(sel) isEqualToString:@"changeBackground"];
+//        
+//    } before:^(id target, SEL sel, NSArray *args) {
+//        
+//        
+//    } after:^(id target, SEL sel, NSArray *args, NSTimeInterval interval) {
+//        
+//        NSLog(@"interval::%@", [@(interval) stringValue]);
+//        
+//    }];
+    
     return YES;
 }
 
