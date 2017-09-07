@@ -31,7 +31,7 @@
     // Usage 2: 打印在运行过程中调用了哪些方法
     [ANYMethodLog logMethodWithClass:[UIViewController class] condition:^BOOL(SEL sel) {
         return YES;
-    } before:^(id target, SEL sel, NSArray *args) {
+    } before:^(id target, SEL sel, NSArray *args, int deep) {
         NSLog(@"target:%@ sel:%@", target, NSStringFromSelector(sel));
     } after:nil];
     
@@ -42,7 +42,7 @@
 //        NSArray *whiteList = @[@"loadView", @"viewWillAppear:", @"viewDidAppear:", @"viewWillDisappear:", @"viewDidDisappear:", @"viewWillLayoutSubviews", @"viewDidLayoutSubviews"];
 //        return [whiteList containsObject:NSStringFromSelector(sel)];
 //        
-//    } before:^(id target, SEL sel, NSArray *args) {
+//    } before:^(id target, SEL sel, NSArray *args, int deep) {
 //        
 //        NSLog(@"target:%@ sel:%@", target, NSStringFromSelector(sel));
 //        
@@ -54,7 +54,7 @@
 //        
 //        return [NSStringFromSelector(sel) isEqualToString:@"viewWillAppear:"];
 //    
-//    } before:^(id target, SEL sel, NSArray *args) {
+//    } before:^(id target, SEL sel, NSArray *args, int deep) {
 //    
 //        NSLog(@"before target:%@ sel:%@ args:%@", target, NSStringFromSelector(sel), args);
 //    
@@ -66,11 +66,11 @@
 //
 //        return [NSStringFromSelector(sel) isEqualToString:@"changeBackground"];
 //
-//    } before:^(id target, SEL sel, NSArray *args) {
+//    } before:^(id target, SEL sel, NSArray *args, int deep) {
 //
 //        NSLog(@"before background color:%@", [(ListController *)target view].backgroundColor);
 //
-//    } after:^(id target, SEL sel, NSArray *args, NSTimeInterval interval) {
+//    } after:^(id target, SEL sel, NSArray *args, NSTimeInterval interval, int deep, id retValue) {
 //        
 //        NSLog(@"after background color:%@", [(ListController *)target view].backgroundColor);
 //        
@@ -82,14 +82,38 @@
 //        
 //        return [NSStringFromSelector(sel) isEqualToString:@"changeBackground"];
 //        
-//    } before:^(id target, SEL sel, NSArray *args) {
+//    } before:^(id target, SEL sel, NSArray *args, int deep) {
 //        
 //        
-//    } after:^(id target, SEL sel, NSArray *args, NSTimeInterval interval) {
+//    } after:^(id target, SEL sel, NSArray *args, NSTimeInterval interval, int deep, id retValue) {
 //        
 //        NSLog(@"interval::%@", [@(interval) stringValue]);
 //        
 //    }];
+    
+    // Usage 7: 打印方法调用跟踪
+    [ANYMethodLog logMethodWithClass:NSClassFromString(@"ListController") condition:^BOOL(SEL sel) {
+        return  YES;
+    } before:^(id target, SEL sel, NSArray *args, int deep) {
+        NSString *selector = NSStringFromSelector(sel);
+        NSArray *selectorArrary = [selector componentsSeparatedByString:@":"];
+        selectorArrary = [selectorArrary filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"length > 0"]];
+        NSMutableString *selectorString = [NSMutableString new];
+        for (int i = 0; i < selectorArrary.count; i++) {
+            [selectorString appendFormat:@"%@:%@ ", selectorArrary[i], args[i]];
+        }
+        NSMutableString *deepString = [NSMutableString new];
+        for (int i = 0; i < deep; i++) {
+            [deepString appendString:@"-"];
+        }
+        NSLog(@"%@[%@ %@]", deepString , target, selectorString);
+    } after:^(id target, SEL sel, NSArray *args, NSTimeInterval interval, int deep, id retValue) {
+        NSMutableString *deepString = [NSMutableString new];
+        for (int i = 0; i < deep; i++) {
+            [deepString appendString:@"-"];
+        }
+        NSLog(@"%@ret:%@", deepString, retValue);
+    }];
     
     return YES;
 }
