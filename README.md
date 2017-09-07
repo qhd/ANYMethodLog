@@ -6,9 +6,9 @@
 
 ```objective-c
 + (void)logMethodWithClass:(Class)aClass
-                 condition:(BOOL(^)(SEL sel))condition
-                    before:(void(^)(id target, SEL sel, NSArray *args))before
-                     after:(void(^)(id target, SEL sel, NSArray *args, NSTimeInterval interval))after;
+                 condition:(ConditionBlock) condition
+                    before:(BeforeBlock) before
+                     after:(AfterBlock) after;
 ```
 
 aClass：要打印的类
@@ -34,7 +34,7 @@ before：方法调用后会调用该 block（interval 是执行方法的耗时�
 ```objective-c
 [ANYMethodLog logMethodWithClass:[UIViewController class] condition:^BOOL(SEL sel) {
     return YES;
-} before:^(id target, SEL sel, NSArray *args) {
+} before:^(id target, SEL sel, NSArray *args, int deep) {
     NSLog(@"target:%@ sel:%@", target, NSStringFromSelector(sel));
 } after:nil];
 ```
@@ -47,7 +47,7 @@ before：方法调用后会调用该 block（interval 是执行方法的耗时�
     NSArray *whiteList = @[@"loadView", @"viewWillAppear:", @"viewDidAppear:", @"viewWillDisappear:", @"viewDidDisappear:", @"viewWillLayoutSubviews", @"viewDidLayoutSubviews"];
     return [whiteList containsObject:NSStringFromSelector(sel)];
     
-} before:^(id target, SEL sel, NSArray *args) {
+} before:^(id target, SEL sel, NSArray *args, int deep) {
     
     NSLog(@"target:%@ sel:%@", target, NSStringFromSelector(sel));
     
@@ -61,7 +61,7 @@ before：方法调用后会调用该 block（interval 是执行方法的耗时�
     
     return [NSStringFromSelector(sel) isEqualToString:@"viewWillAppear:"];
 
-} before:^(id target, SEL sel, NSArray *args) {
+} before:^(id target, SEL sel, NSArray *args, int deep) {
 
     NSLog(@"before target:%@ sel:%@ args:%@", target, NSStringFromSelector(sel), args);
 
@@ -75,11 +75,11 @@ before：方法调用后会调用该 block（interval 是执行方法的耗时�
 
     return [NSStringFromSelector(sel) isEqualToString:@"changeBackground"];
 
-} before:^(id target, SEL sel, NSArray *args) {
+} before:^(id target, SEL sel, NSArray *args, int deep) {
 
     NSLog(@"before background color:%@", [(ListController *)target view].backgroundColor);
 
-} after:^(id target, SEL sel, NSArray *args, NSTimeInterval interval) {
+} after:^(id target, SEL sel, NSArray *args, NSTimeInterval interval, int deep, id retValue) {
     
     NSLog(@"after background color:%@", [(ListController *)target view].backgroundColor);
     
@@ -93,13 +93,40 @@ before：方法调用后会调用该 block（interval 是执行方法的耗时�
     
     return [NSStringFromSelector(sel) isEqualToString:@"changeBackground"];
     
-} before:^(id target, SEL sel, NSArray *args) {
+} before:^(id target, SEL sel, NSArray *args, int deep) {
     
     
-} after:^(id target, SEL sel, NSArray *args, NSTimeInterval interval) {
+} after:^(id target, SEL sel, NSArray *args, NSTimeInterval interval, int deep, id retValue) {
     
     NSLog(@"interval::%@", [@(interval) stringValue]);
     
+}];
+```
+
+7.追踪方法调用顺序： 
+
+```objective-c
+[ANYMethodLog logMethodWithClass:NSClassFromString(@"ListController") condition:^BOOL(SEL sel) {
+    return  YES;
+} before:^(id target, SEL sel, NSArray *args, int deep) {
+    NSString *selector = NSStringFromSelector(sel);
+    NSArray *selectorArrary = [selector componentsSeparatedByString:@":"];
+    selectorArrary = [selectorArrary filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"length > 0"]];
+    NSMutableString *selectorString = [NSMutableString new];
+    for (int i = 0; i < selectorArrary.count; i++) {
+        [selectorString appendFormat:@"%@:%@ ", selectorArrary[i], args[i]];
+    }
+    NSMutableString *deepString = [NSMutableString new];
+    for (int i = 0; i < deep; i++) {
+        [deepString appendString:@"-"];
+    }
+    NSLog(@"%@[%@ %@]", deepString , target, selectorString);
+} after:^(id target, SEL sel, NSArray *args, NSTimeInterval interval, int deep, id retValue) {
+    NSMutableString *deepString = [NSMutableString new];
+    for (int i = 0; i < deep; i++) {
+        [deepString appendString:@"-"];
+    }
+    NSLog(@"%@ret:%@", deepString, retValue);
 }];
 ```
 
