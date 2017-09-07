@@ -55,14 +55,41 @@
 #import <objc/message.h>
 #import <UIKit/UIKit.h>
 
+#pragma mark - deep
+
+//调用层次
+static int deep = -1;
+
+#pragma mark - Func Define
+
+BOOL qhd_isInBlackList(NSString *methodName);
+NSDictionary *qhd_canHandleTypeDic(void);
+BOOL qhd_isCanHandle(NSString *typeEncode);
+SEL qhd_createNewSelector(SEL originalSelector);
+BOOL qhd_isStructType(const char *argumentType);
+NSString *qhd_structName(const char *argumentType);
+BOOL isCGRect           (const char *type);
+BOOL isCGPoint          (const char *type);
+BOOL isCGSize           (const char *type);
+BOOL isCGVector         (const char *type);
+BOOL isUIOffset         (const char *type);
+BOOL isUIEdgeInsets     (const char *type);
+BOOL isCGAffineTransform(const char *type);
+BOOL qhd_isCanHook(Method method, const char *returnType);
+id getReturnValue(NSInvocation *invocation);
+NSArray *qhd_method_arguments(NSInvocation *invocation);
+void qhd_forwardInvocation(id target, SEL selector, NSInvocation *invocation);
+BOOL qhd_replaceMethod(Class cls, SEL originSelector, char *returnType);
+void qhd_logMethod(Class aClass, BOOL(^condition)(SEL sel));
+
 #pragma mark - AMLBlock
 
 @interface AMLBlock : NSObject
 
 @property (strong, nonatomic) NSString *targetClassName;
-@property (copy, nonatomic) BOOL(^condition)(SEL sel);
-@property (copy, nonatomic) void(^before)(id target, SEL sel, NSArray *args);
-@property (copy, nonatomic) void(^after)(id target, SEL sel, NSArray *args, NSTimeInterval interval);
+@property (copy, nonatomic) ConditionBlock condition;
+@property (copy, nonatomic) BeforeBlock before;
+@property (copy, nonatomic) AfterBlock  after;
 
 @end
 
@@ -76,15 +103,15 @@
     }
 }
 
-- (void)rundBefore:(id)target sel:(SEL)sel args:(NSArray *)args {
+- (void)rundBefore:(id)target sel:(SEL)sel args:(NSArray *)args deep:(int) deep {
     if (self.before) {
-        self.before(target, sel, args);
+        self.before(target, sel, args, deep);
     }
 }
 
-- (void)rundAfter:(id)target sel:(SEL)sel args:(NSArray *)args interval:(NSTimeInterval)interval {
+- (void)rundAfter:(id)target sel:(SEL)sel args:(NSArray *)args interval:(NSTimeInterval)interval deep:(int)deep retValue:(id)retValue{
     if (self.after) {
-        self.after(target, sel, args, interval);
+        self.after(target, sel, args, interval, deep, retValue);
     }
 }
 
@@ -263,6 +290,63 @@ BOOL qhd_isCanHook(Method method, const char *returnType) {
     return isCanHook;
 }
 
+//获取方法返回值
+id getReturnValue(NSInvocation *invocation){
+    const char *returnType = invocation.methodSignature.methodReturnType;
+    if (returnType[0] == 'r') {
+        returnType++;
+    }
+    #define WRAP_GET_VALUE(type) \
+    do { \
+        type val = 0; \
+        [invocation getReturnValue:&val]; \
+        return @(val); \
+    } while (0)
+    if (strcmp(returnType, @encode(id)) == 0 || strcmp(returnType, @encode(Class)) == 0 || strcmp(returnType, @encode(void (^)(void))) == 0) {
+        __autoreleasing id returnObj;
+        [invocation getReturnValue:&returnObj];
+        return returnObj;
+    } else if (strcmp(returnType, @encode(char)) == 0) {
+        WRAP_GET_VALUE(char);
+    } else if (strcmp(returnType, @encode(int)) == 0) {
+        WRAP_GET_VALUE(int);
+    } else if (strcmp(returnType, @encode(short)) == 0) {
+        WRAP_GET_VALUE(short);
+    } else if (strcmp(returnType, @encode(long)) == 0) {
+        WRAP_GET_VALUE(long);
+    } else if (strcmp(returnType, @encode(long long)) == 0) {
+        WRAP_GET_VALUE(long long);
+    } else if (strcmp(returnType, @encode(unsigned char)) == 0) {
+        WRAP_GET_VALUE(unsigned char);
+    } else if (strcmp(returnType, @encode(unsigned int)) == 0) {
+        WRAP_GET_VALUE(unsigned int);
+    } else if (strcmp(returnType, @encode(unsigned short)) == 0) {
+        WRAP_GET_VALUE(unsigned short);
+    } else if (strcmp(returnType, @encode(unsigned long)) == 0) {
+        WRAP_GET_VALUE(unsigned long);
+    } else if (strcmp(returnType, @encode(unsigned long long)) == 0) {
+        WRAP_GET_VALUE(unsigned long long);
+    } else if (strcmp(returnType, @encode(float)) == 0) {
+        WRAP_GET_VALUE(float);
+    } else if (strcmp(returnType, @encode(double)) == 0) {
+        WRAP_GET_VALUE(double);
+    } else if (strcmp(returnType, @encode(BOOL)) == 0) {
+        WRAP_GET_VALUE(BOOL);
+    } else if (strcmp(returnType, @encode(char *)) == 0) {
+        WRAP_GET_VALUE(const char *);
+    } else if (strcmp(returnType, @encode(void)) == 0) {
+        return @"void";
+    } else {
+        NSUInteger valueSize = 0;
+        NSGetSizeAndAlignment(returnType, &valueSize, NULL);
+        unsigned char valueBytes[valueSize];
+        [invocation getReturnValue:valueBytes];
+        
+        return [NSValue valueWithBytes:valueBytes objCType:returnType];
+    }
+    return nil;
+}
+
 //获取方法参数
 NSArray *qhd_method_arguments(NSInvocation *invocation) {
     NSMethodSignature *methodSignature = [invocation methodSignature];
@@ -359,8 +443,10 @@ void qhd_forwardInvocation(id target, SEL selector, NSInvocation *invocation) {
     [invocation setSelector:qhd_createNewSelector(originSelector)];
     [invocation setTarget:target];
     
+    deep++;
+    
     AMLBlock *block = [SHARED_ANYMETHODLOG blockWithTarget:target];
-    [block rundBefore:target sel:originSelector args:argList];
+    [block rundBefore:target sel:originSelector args:argList deep:deep];
     
     NSDate *start = [NSDate date];
     
@@ -369,7 +455,9 @@ void qhd_forwardInvocation(id target, SEL selector, NSInvocation *invocation) {
     NSDate *end = [NSDate date];
     NSTimeInterval interval = [end timeIntervalSinceDate:start];
     
-    [block rundAfter:target sel:originSelector args:argList interval:interval];
+    [block rundAfter:target sel:originSelector args:argList interval:interval deep:deep retValue:getReturnValue(invocation)];
+    
+    deep--;
 }
 
 //替换方法
@@ -450,9 +538,9 @@ void qhd_logMethod(Class aClass, BOOL(^condition)(SEL sel)) {
 @implementation ANYMethodLog
 
 + (void)logMethodWithClass:(Class)aClass
-                 condition:(BOOL(^)(SEL sel))condition
-                    before:(void(^)(id target, SEL sel, NSArray *args))before
-                     after:(void(^)(id target, SEL sel, NSArray *args, NSTimeInterval interval))after {
+                 condition:(ConditionBlock) condition
+                    before:(BeforeBlock) before
+                     after:(AfterBlock) after {
     #ifndef DEBUG
         return;
     #endif

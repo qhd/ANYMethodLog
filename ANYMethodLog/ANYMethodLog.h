@@ -10,6 +10,10 @@
 
 #import <Foundation/Foundation.h>
 
+typedef BOOL (^ConditionBlock)(SEL sel);
+typedef void (^BeforeBlock)(id target, SEL sel, NSArray *args, int deep);
+typedef void (^AfterBlock)(id target, SEL sel, NSArray *args, NSTimeInterval interval, int deep, id retValue);
+
 @interface ANYMethodLog : NSObject
 
 /**
@@ -21,8 +25,8 @@
  @param after 方法调用后会调用该 block（interval 是执行方法的耗时）
  */
 + (void)logMethodWithClass:(Class)aClass
-                 condition:(BOOL(^)(SEL sel))condition
-                    before:(void(^)(id target, SEL sel, NSArray *args))before
-                     after:(void(^)(id target, SEL sel, NSArray *args, NSTimeInterval interval))after;
+                 condition:(ConditionBlock) condition
+                    before:(BeforeBlock) before
+                     after:(AfterBlock) after;
 
 @end
