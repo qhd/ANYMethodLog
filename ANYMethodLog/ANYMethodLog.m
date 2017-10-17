@@ -186,7 +186,8 @@ NSDictionary *qhd_canHandleTypeDic() {
                 [NSString stringWithUTF8String:@encode(CGVector)] : @"(CGVector)",
                 [NSString stringWithUTF8String:@encode(CGAffineTransform)] : @"(CGAffineTransform)",
                 [NSString stringWithUTF8String:@encode(UIOffset)] : @"(UIOffset)",
-                [NSString stringWithUTF8String:@encode(UIEdgeInsets)] : @"(UIEdgeInsets)"
+                [NSString stringWithUTF8String:@encode(UIEdgeInsets)] : @"(UIEdgeInsets)",
+                @"@?":@"" // block类型
                 };//TODO:添加其他类型
     });
     return dic;
