@@ -1,6 +1,8 @@
 # ANYMethodLog - log any method call of object in Objective-C  
   
-打印Objective-C对象中的任何方法  
+打印 Objective-C 对象中的任何方法  
+
+![running show](Documentation/Images/running_show.gif)
   
 ## 调用说明:  
 
