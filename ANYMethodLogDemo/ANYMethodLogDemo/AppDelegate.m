@@ -92,28 +92,28 @@
 //    }];
     
     // Usage 7: 打印方法调用跟踪
-    [ANYMethodLog logMethodWithClass:NSClassFromString(@"ListController") condition:^BOOL(SEL sel) {
-        return  YES;
-    } before:^(id target, SEL sel, NSArray *args, int deep) {
-        NSString *selector = NSStringFromSelector(sel);
-        NSArray *selectorArrary = [selector componentsSeparatedByString:@":"];
-        selectorArrary = [selectorArrary filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"length > 0"]];
-        NSMutableString *selectorString = [NSMutableString new];
-        for (int i = 0; i < selectorArrary.count; i++) {
-            [selectorString appendFormat:@"%@:%@ ", selectorArrary[i], args[i]];
-        }
-        NSMutableString *deepString = [NSMutableString new];
-        for (int i = 0; i < deep; i++) {
-            [deepString appendString:@"-"];
-        }
-        NSLog(@"%@[%@ %@]", deepString , target, selectorString);
-    } after:^(id target, SEL sel, NSArray *args, NSTimeInterval interval, int deep, id retValue) {
-        NSMutableString *deepString = [NSMutableString new];
-        for (int i = 0; i < deep; i++) {
-            [deepString appendString:@"-"];
-        }
-        NSLog(@"%@ret:%@", deepString, retValue);
-    }];
+//    [ANYMethodLog logMethodWithClass:NSClassFromString(@"ListController") condition:^BOOL(SEL sel) {
+//        return  YES;
+//    } before:^(id target, SEL sel, NSArray *args, int deep) {
+//        NSString *selector = NSStringFromSelector(sel);
+//        NSArray *selectorArrary = [selector componentsSeparatedByString:@":"];
+//        selectorArrary = [selectorArrary filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"length > 0"]];
+//        NSMutableString *selectorString = [NSMutableString new];
+//        for (int i = 0; i < selectorArrary.count; i++) {
+//            [selectorString appendFormat:@"%@:%@ ", selectorArrary[i], args[i]];
+//        }
+//        NSMutableString *deepString = [NSMutableString new];
+//        for (int i = 0; i < deep; i++) {
+//            [deepString appendString:@"-"];
+//        }
+//        NSLog(@"%@[%@ %@]", deepString , target, selectorString);
+//    } after:^(id target, SEL sel, NSArray *args, NSTimeInterval interval, int deep, id retValue) {
+//        NSMutableString *deepString = [NSMutableString new];
+//        for (int i = 0; i < deep; i++) {
+//            [deepString appendString:@"-"];
+//        }
+//        NSLog(@"%@ret:%@", deepString, retValue);
+//    }];
     
     return YES;
 }

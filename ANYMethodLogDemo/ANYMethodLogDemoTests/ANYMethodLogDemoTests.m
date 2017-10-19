@@ -256,6 +256,11 @@
     return a;
 }
 
+- (void (^)())method27:(void (^)())a {
+    DEFAULT_LOG;
+    return a;
+}
+
 @end
 
 
@@ -293,9 +298,9 @@
 - (void)testMyObject {
     [ANYMethodLog logMethodWithClass:[MyObject class] condition:^BOOL(SEL sel) {
         return YES;
-    } before:^(id target, SEL sel, NSArray *args) {
+    } before:^(id target, SEL sel, NSArray *args, int deep) {
         NSLog(@"target:%@ sel:%@ args:%@", target, NSStringFromSelector(sel), args);
-    } after:^(id target, SEL sel, NSArray *args, NSTimeInterval interval) {
+    } after:^(id target, SEL sel, NSArray *args, NSTimeInterval interval, int deep, id retValue) {
         
     }];
     
@@ -364,6 +369,11 @@
     XCTAssertTrue(UIOffsetEqualToOffset(UIOffsetMake(6.123, 6.1234),[o method25:UIOffsetMake(6.123, 6.1234)]));
     
     XCTAssertTrue([@"hello" isEqualToString:[o method26:@"hello"]]);
+    
+    void (^aBlock)() = ^() {
+        
+    };
+    XCTAssertTrue(aBlock == [o method27:aBlock]);
 }
 
 @end
