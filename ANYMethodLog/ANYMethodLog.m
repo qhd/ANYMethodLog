@@ -172,8 +172,11 @@ NSDictionary *qhd_canHandleTypeDic() {
                 [NSString stringWithUTF8String:@encode(CGAffineTransform)] : @"(CGAffineTransform)",
                 [NSString stringWithUTF8String:@encode(UIOffset)] : @"(UIOffset)",
                 [NSString stringWithUTF8String:@encode(UIEdgeInsets)] : @"(UIEdgeInsets)",
+                @"o^@" : @"(id*)",
                 @"@?":@"(block)" // block类型
                 };//TODO:添加其他类型
+        
+        DEV_LOG(@"arg types:%@", dic);
     });
     return dic;
 }
@@ -242,6 +245,7 @@ BOOL qhd_isCanHook(Method method, const char *returnType) {
         method_getArgumentType(method, k, argument, sizeof(argument));
         NSString *argumentString = [NSString stringWithUTF8String:argument];
         if (!qhd_isCanHandle(argumentString)) {
+            DEV_LOG(@"unknow arg type:%@", argumentString);
             isCanHook = NO;
             break;
         }
@@ -356,6 +360,17 @@ NSArray *qhd_method_arguments(NSInvocation *invocation) {
             __unsafe_unretained id arg_temp;
             [invocation getArgument:&arg_temp atIndex:i];
             arg = arg_temp;
+            if (!arg) {
+                arg = @"nil";
+            }
+        }
+        else if (0 == strcmp(argumentType, "o^@")) {
+            void ** arg_temp;
+            [invocation getArgument:&arg_temp atIndex:i];
+            arg = (__bridge id)(*arg_temp);
+            if (!arg) {
+                arg = @"*nil";
+            }
         }
         else if (0 == strcmp(argumentType, @encode(SEL))) {
             SEL arg_temp;
@@ -379,7 +394,7 @@ NSArray *qhd_method_arguments(NSInvocation *invocation) {
         }
         
         if (!arg) {
-            arg = @"unknown";
+            arg = [NSString stringWithFormat:@"%s:unknown", argumentType];
         }
         [argList addObject:arg];
     }
