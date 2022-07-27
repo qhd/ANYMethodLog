@@ -1,5 +1,7 @@
 # ANYMethodLog - log any method call of object in Objective-C  
-  
+[English](../master/readme-en.md)
+
+
 打印 Objective-C 对象中的任何方法  
 
 ![running show](Documentation/Images/running_show.gif)
