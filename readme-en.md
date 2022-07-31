@@ -1,12 +1,11 @@
 # ANYMethodLog - log any method call of object in Objective-C  
-[English](../master/readme-en.md)
+[中文](../master/README.md)
 
-
-打印 Objective-C 对象中的任何方法  
+Print any method in an Objective-C object with ANYMethodLog
 
 ![running show](Documentation/Images/running_show.gif)
   
-## 调用说明:  
+## How to call:  
 
 ```objective-c
 + (void)logMethodWithClass:(Class)aClass
@@ -15,16 +14,16 @@
                      after:(void(^)(id target, SEL sel, NSArray *args, NSTimeInterval interval, int deep, id retValue)) after;
 ```
 
-aClass：要打印的类
+aClass：The class to be logged
 
-condition：根据此 block 来决定是否追踪方法（sel 是方法名）
+condition：Whether or not to track the method according to this block (sel is the method name)
 
-before：方法调用前会调用该 block（target 是检测的对象，sel 是方法名，args 是参数列表，deep 是调用层级）
+before：block will be called before the method (target is the detected object, sel is the method name, args is the parameter list, and deep is the calling level)
 
-after：方法调用后会调用该 block（interval 是执行方法的耗时，retValue 是返回值）
+after：block will be called after the method (interval is time spent executing the method, and retValue is the return value)
 
-## 功能：
-1.打印一个类定义的所有方法，包括公开方法和私有方法：  
+## Functionality：
+1. Print all methods defined by a class, including public and private methods:
 
 ```objective-c
 [ANYMethodLog logMethodWithClass:[UIViewController class] condition:^BOOL(SEL sel) {
@@ -33,7 +32,7 @@ after：方法调用后会调用该 block（interval 是执行方法的耗时，
 } before:nil after:nil];
 ```
 
-2.打印在运行过程中调用了哪些方法：  
+2. Print which methods are called during the run:
 
 ```objective-c
 [ANYMethodLog logMethodWithClass:[UIViewController class] condition:^BOOL(SEL sel) {
@@ -43,7 +42,7 @@ after：方法调用后会调用该 block（interval 是执行方法的耗时，
 } after:nil];
 ```
 
-3.打印特定几个方法的调用顺序：  
+3. Print the calling sequence of specific methods:
 
 ```objective-c
 [ANYMethodLog logMethodWithClass:[UIViewController class] condition:^BOOL(SEL sel) {
@@ -58,7 +57,7 @@ after：方法调用后会调用该 block（interval 是执行方法的耗时，
 } after:nil];
 ```
 
-4.打印调用方法时的参数值：  
+4. Print the parameter values when calling the method:
 
 ```objective-c
 [ANYMethodLog logMethodWithClass:NSClassFromString(@"UIViewController") condition:^BOOL(SEL sel) {
@@ -72,7 +71,7 @@ after：方法调用后会调用该 block（interval 是执行方法的耗时，
 } after:nil];
 ```
 
-5.打印某个方法调用前后的变化：  
+5. Print the changes before and after a method call:
 
 ```objective-c
 [ANYMethodLog logMethodWithClass:NSClassFromString(@"ListController") condition:^BOOL(SEL sel) {
@@ -90,7 +89,7 @@ after：方法调用后会调用该 block（interval 是执行方法的耗时，
 }];
 ```
 
-6.打印某个方法调用的耗时：  
+6. Print the time elapsed for a method call:：  
 
 ```objective-c
 [ANYMethodLog logMethodWithClass:NSClassFromString(@"ListController") condition:^BOOL(SEL sel) {
@@ -107,7 +106,7 @@ after：方法调用后会调用该 block（interval 是执行方法的耗时，
 }];
 ```
 
-7.追踪方法调用顺序： 
+7. Trace the method call sequence:： 
 
 ```objective-c
 [ANYMethodLog logMethodWithClass:NSClassFromString(@"ListController") condition:^BOOL(SEL sel) {
@@ -136,20 +135,18 @@ after：方法调用后会调用该 block（interval 是执行方法的耗时，
 
 ## TODO：  
 
-+ 解决真机上运行出现的问题。 (已完成)  
-+ 打印调用时的参数值。 (已完成)  
-+ 打印返回值。 (已完成)  
-+ 计算某个方法的耗时。 (已完成)  
++ Solving the problem of running on real machines. (completed)
++ Printing the parameter value at the time of the call. (completed)
++ Printing the return value. (completed)
++ Calculating the time taken for a method. (completed)
 
-## 原理：  
+## Implementation：  
 
-<del>利用runtime交换方法的实现。动态创建新方法，在新方法里再调用原来的方法。现阶段还不是很完美地调用原来方法，在需要传参的方法会出现传参失败，在真机问题较多，在模拟器问题较少，在用的时候可以过滤掉需要传参的方法。</del>
+1. Replace the `IMP` of the original method with `_objc_msgForward` to trigger the `forwardInvocation` method;
 
-1.把原方法的 `IMP` 换成 `_objc_msgForward` ，使之触发 `forwardInvocation` 方法；
+2. Replace the `IMP` of the method `forwardInvocation` with `qhd_forwardInvocation`
 
-2.把方法 `forwardInvocation` 的 `IMP` 换成 `qhd_forwardInvocation` ；
+3. Create a new method, `IMP` overwrites the original method, then just call the new method in `qhd_forwardInvocation`. Then you can insert log in `qhd_forwardInvocation`.
 
-3.创建一个新方法，`IMP` 就是原方法的原来的 `IMP`，那么只要在 `qhd_forwardInvocation` 调用新方法即可。那么就可以在 `qhd_forwardInvocation` 插入 log 。
-
-欢迎提 Issues 和 Pull requests
+Issues and Pull requests are welcome
 
